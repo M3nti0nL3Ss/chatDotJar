@@ -23,7 +23,7 @@ import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
-public class ClientWindow extends JFrame {
+public class ClientWindow extends JFrame implements Runnable{
 
 
 	private static final long serialVersionUID = 1L;
@@ -40,6 +40,12 @@ public class ClientWindow extends JFrame {
 	
 	private Client client;
 	
+	private int ID = -1;
+	
+	private boolean running = false;
+	private Thread listen, run;
+	
+	
 	public ClientWindow(String name,String ip, int port) {
 		client = new Client(name, ip, port);
 		setTitle("Chat");
@@ -50,6 +56,10 @@ public class ClientWindow extends JFrame {
 		createWindow();
 		console("Attempting a connection to " + ip + ":" + port + ", User: " + name);
 		client.send(("/c/" + name).getBytes());
+		
+		running = true;
+		run = new Thread(this,"ClientWindow");
+		run.start();
 	}
 	
 	
@@ -131,14 +141,43 @@ public class ClientWindow extends JFrame {
 	private void send(String msg) {
 		if(msg.isEmpty()) return;
 		msg = client.getName() + ": " + msg;
-		console(msg);
+		//console(msg);
 		msg = "/m/" + msg;
 		client.send(msg.getBytes());
 		txtrChat.setCaretPosition(txtrChat.getDocument().getLength());
 		txtMessage.setText("");
 	}
 	
-	public void console(String message) {
+	
+	private void console(String message) {
 		txtrChat.append(message + "\n\r");
+	}
+	
+	private void listen() {
+		listen = new Thread("Listen") {
+			public void run() {
+				while(running) {
+					String message = client.receive();
+					if(message.startsWith("/c/")) {
+						client.setID(Integer.parseInt(message.split("/c/|/e/")[1]));
+						console("Connected, ID : "+client.getID());
+					}else if(message.startsWith("/m/")) {
+						String text = message.split("/m/|/e/")[1];
+						console(text);
+					}
+					try {
+						Thread.sleep(100L);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+		listen.start();
+	}
+	
+	
+	public void run() {
+		listen();
 	}
 }

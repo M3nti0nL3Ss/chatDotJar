@@ -3,6 +3,7 @@ package com.th3md.chat.server;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +40,11 @@ public class Server implements Runnable{
 		client = new Thread("Client") {
 			public void run() {
 				while(running) {
-					
+					try {
+						Thread.sleep(100L);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		};
@@ -58,6 +63,11 @@ public class Server implements Runnable{
 						e.printStackTrace();
 					}
 					process(packet);
+					try {
+						Thread.sleep(100L);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		};
@@ -67,18 +77,51 @@ public class Server implements Runnable{
 	private void process(DatagramPacket rPacket) {
 		String rPacketString = new String(rPacket.getData());
 		if(rPacketString.startsWith("/c/")) {
+			//UUID id = UUID.randomUUID();
+			int id = Random.getRandom();
+			System.out.println("ID :" + id);
 			clients.add(
 					new ServerClient(
 							rPacketString.substring(3,rPacketString.length()),
 							rPacket.getAddress(),
 							rPacket.getPort(),
-							50
+							id
 					)
 			);
 			System.out.println(rPacketString.substring(3,rPacketString.length()));
-		}else {
+			send(("/c/"+id+"/e/").getBytes(), rPacket.getAddress(), rPacket.getPort());
+		}else if(rPacketString.startsWith("/m/")){
+			//System.out.println(rPacketString); // just for debug
+			distribute(rPacketString);
+		}else{
 			System.out.println(rPacketString);
 		}
+	}
+	
+	private void distribute(String message) {
+		for(int i=0;i<clients.size();i++) {
+			ServerClient client = clients.get(i);
+			send(message.getBytes(), client.ip,client.port);
+		}
+	}
+	
+	private void send(final byte[] data, final InetAddress ip, final int port) {
+		send = new Thread("Send") {
+			public void run() {
+				DatagramPacket packet = new DatagramPacket(data, data.length, ip, port);
+				try {
+					socket.send(packet);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				try {
+					Thread.sleep(100L);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		send.start();
 	}
 	
 }

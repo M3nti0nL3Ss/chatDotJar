@@ -81,7 +81,7 @@ public class Login extends JFrame {
 	
 	private void login(String name,String ip, int port) {
 		dispose();
-		new Client(name,ip,port);
+		new ClientWindow(name,ip,port);
 	}
 	
 	public static void main(String[] args) {
