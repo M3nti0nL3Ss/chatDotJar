@@ -1,22 +1,27 @@
 package com.th3md.chat;
 
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.border.EmptyBorder;
-
-import java.awt.GridBagLayout;
 import javax.swing.JTextArea;
-import javax.swing.UIManager;
-
-import java.awt.GridBagConstraints;
-import javax.swing.JButton;
-import java.awt.Insets;
 import javax.swing.JTextField;
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
 
 public class Client extends JFrame {
 
@@ -30,6 +35,10 @@ public class Client extends JFrame {
 	
 	private JTextArea txtrChat;
 	
+	private DatagramSocket socket;
+	private InetAddress address;
+	
+	private Thread send;
 
 
 	public Client(String name,String ip, int port) {
@@ -37,8 +46,54 @@ public class Client extends JFrame {
 		this.name = name;
 		this.ip = ip;
 		this.port = port;
+		if(!openConnect(ip)) {
+			System.err.println("Error! Connection Faild");
+			console("Connection Faild!");
+		}
 		createWindow();
 		console("Attempting a connection to " + ip + ":" + port + ", User: " + name);
+		send(("/c/" + name).getBytes());
+	}
+	
+	private String receive() {
+		byte[] data = new byte[1024];
+		DatagramPacket packet = new DatagramPacket(data, data.length);
+		
+		try {
+			socket.receive(packet);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		return new String(packet.getData());
+	}
+	
+	private void send(final byte[] data) {
+		send = new Thread("SendChat") {
+			public void run() {
+				DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
+				try {
+					socket.send(packet);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		send.start();
+	}
+	
+	private boolean openConnect(String ip) {
+		try {
+			socket = new DatagramSocket();
+			address = InetAddress.getByName(ip);
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+			return false;
+		} catch (SocketException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
 	}
 	
 	private void createWindow() {
@@ -119,6 +174,7 @@ public class Client extends JFrame {
 		if(msg.isEmpty()) return;
 		msg = name + ": " + msg;
 		console(msg);
+		send(msg.getBytes());
 		txtrChat.setCaretPosition(txtrChat.getDocument().getLength());
 		txtMessage.setText("");
 	}
