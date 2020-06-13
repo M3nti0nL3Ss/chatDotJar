@@ -49,6 +49,7 @@ public class Client{
 	
 	public void send(final byte[] data) {
 		send = new Thread("SendChat") {
+			@Override
 			public void run() {
 				DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
 				try {
@@ -68,6 +69,7 @@ public class Client{
 	
 	public void close() {
 		new Thread("Closing") {
+			@Override
 			public void run() {
 				synchronized (socket) {
 					socket.close();

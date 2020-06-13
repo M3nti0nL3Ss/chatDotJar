@@ -4,6 +4,7 @@ package com.th3md.chat;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 import java.awt.GridBagLayout;
 import javax.swing.JList;
@@ -16,7 +17,7 @@ public class OnlineUsers extends JFrame {
 	private JList<String> list;
 
 	public OnlineUsers() {
-		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 		setSize(200,320);
 		setLocationRelativeTo(null);
 		setTitle("Online Users");

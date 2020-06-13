@@ -9,12 +9,8 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.IOException;
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 
 import javax.swing.JButton;
@@ -24,6 +20,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
+import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.JMenuBar;
 import javax.swing.JMenu;
@@ -83,7 +80,7 @@ public class ClientWindow extends JFrame implements Runnable{
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		setSize(880,550);
 		setLocationRelativeTo(null);
 		
@@ -95,6 +92,7 @@ public class ClientWindow extends JFrame implements Runnable{
 		
 		mntmOnlineUsers = new JMenuItem("Online Users");
 		mntmOnlineUsers.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				users.setVisible(true);
 			}
@@ -150,6 +148,7 @@ public class ClientWindow extends JFrame implements Runnable{
 		
 		JButton btnSend = new JButton("Send");
 		btnSend.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				send(txtMessage.getText(),true);
 			}
@@ -165,6 +164,7 @@ public class ClientWindow extends JFrame implements Runnable{
 		txtMessage.requestFocusInWindow();
 		
 		addWindowListener(new WindowAdapter() {
+			@Override
 			public void windowClosing(WindowEvent e) {
 				send("/d/" + client.getID() + "/e/",false);
 				running = false;
@@ -198,6 +198,7 @@ public class ClientWindow extends JFrame implements Runnable{
 	
 	private void listen() {
 		listen = new Thread("Listen") {
+			@Override
 			public void run() {
 				while(running) {
 					String message = client.receive();
@@ -225,6 +226,7 @@ public class ClientWindow extends JFrame implements Runnable{
 	}
 	
 	
+	@Override
 	public void run() {
 		listen();
 	}

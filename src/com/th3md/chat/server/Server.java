@@ -46,15 +46,18 @@ public class Server implements Runnable{
 				continue;
 			}
 			text = text.substring(1);
-			if(text.equals("raw")) raw = !raw;
-			if(text.equals("clients")) {
+			if(text.equals("raw")) {
+				raw = !raw;
+				System.out.println("Raw mode set to " + raw);
+			}
+			else if(text.equals("clients")) {
 				System.out.println("Clients:\n===========");
 				for(ServerClient c : clients) {
 					System.out.println(c.name + "(" + c.getID() + ") "+ c.ip + ":"+ c.port);
 				}
 				System.out.println("===========");
 			}
-			if(text.startsWith("kick")) {
+			else if(text.startsWith("kick")) {
 				String name = text.split(" ")[1];
 				int id;
 				try {
@@ -84,11 +87,19 @@ public class Server implements Runnable{
 					if(!check) System.out.println("Client " + name + " Doesn't exist. Check Name!");
 				}
 			}
+			else if(text.equals("quit")) quit();
+			else if(text.equals("help")) help();
+			else {
+				System.out.println("Unknown command.");
+				help();
+			}
 		}
+		scanner.close();
 	}
 	
 	private void clients() {
 		client = new Thread("Client") {
+			@Override
 			public void run() {
 				while(running) {
 					distribute("/i/server");
@@ -117,6 +128,17 @@ public class Server implements Runnable{
 		client.start();
 	}
 	
+	private void help() {
+		System.out.println("List of commands:");
+		System.out.println("=================");
+		System.out.println("/raw - enables/disables raw mode.");
+		System.out.println("/clients - shows all connected clients.");
+		System.out.println("/kick [users ID or username] - kicks a user.");
+		System.out.println("/help - shows this help message.");
+		System.out.println("/quit - shuts down the server.");
+		System.out.println("=================");
+	}
+	
 	private void sendWhosOnline() {
 		if(clients.size() <= 0) return;
 		String users = "/u/";
@@ -129,12 +151,14 @@ public class Server implements Runnable{
 	
 	private void receive() {
 		receive = new Thread("Receive") {
+			@Override
 			public void run() {
 				while(running) {
 					byte[] data = new byte[1024];
 					DatagramPacket packet = new DatagramPacket(data, data.length);
 					try {
 						socket.receive(packet);
+					} catch (SocketException e) {
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -179,6 +203,14 @@ public class Server implements Runnable{
 		}
 	}
 	
+	private void quit() {
+		for(ServerClient c: clients) {
+			disconnect(c.getID(), true);
+		}
+		running = false;
+		socket.close();
+	}
+	
 	private void disconnect(int id, boolean status) {
 		ServerClient client=null;
 		for(int i = 0;i<clients.size();i++) 
@@ -210,6 +242,7 @@ public class Server implements Runnable{
 	
 	private void send(final byte[] data, final InetAddress ip, final int port) {
 		send = new Thread("Send") {
+			@Override
 			public void run() {
 				DatagramPacket packet = new DatagramPacket(data, data.length, ip, port);
 				try {
