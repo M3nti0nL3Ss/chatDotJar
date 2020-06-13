@@ -15,6 +15,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -24,6 +25,9 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
+import javax.swing.JMenuBar;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 
 public class ClientWindow extends JFrame implements Runnable{
 
@@ -46,6 +50,12 @@ public class ClientWindow extends JFrame implements Runnable{
 	
 	private boolean running = false;
 	private Thread listen, run;
+	private JMenuBar menuBar;
+	private JMenu mnFile;
+	private JMenuItem mntmOnlineUsers;
+	private JMenuItem mntmExit;
+	
+	private OnlineUsers users;
 	
 	
 	public ClientWindow(String name,String ip, int port) {
@@ -59,6 +69,7 @@ public class ClientWindow extends JFrame implements Runnable{
 		console("Attempting a connection to " + ip + ":" + port + ", User: " + name);
 		client.send(("/c/" + name + "/e/").getBytes());
 		
+		users = new OnlineUsers();
 		running = true;
 		run = new Thread(this,"ClientWindow");
 		run.start();
@@ -75,14 +86,29 @@ public class ClientWindow extends JFrame implements Runnable{
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setSize(880,550);
 		setLocationRelativeTo(null);
+		
+		menuBar = new JMenuBar();
+		setJMenuBar(menuBar);
+		
+		mnFile = new JMenu("File");
+		menuBar.add(mnFile);
+		
+		mntmOnlineUsers = new JMenuItem("Online Users");
+		mntmOnlineUsers.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				users.setVisible(true);
+			}
+		});
+		mnFile.add(mntmOnlineUsers);
+		
+		mntmExit = new JMenuItem("Exit");
+		mnFile.add(mntmExit);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 		GridBagLayout gbl_contentPane = new GridBagLayout();
 		gbl_contentPane.columnWidths = new int[]{28,815,30, 7};
 		gbl_contentPane.rowHeights = new int[]{35,475, 40};
-		gbl_contentPane.columnWeights = new double[]{1.0, 1.0};
-		gbl_contentPane.rowWeights = new double[]{1.0, Double.MIN_VALUE};
 		contentPane.setLayout(gbl_contentPane);
 		
 		txtrChat = new JTextArea();
@@ -96,6 +122,8 @@ public class ClientWindow extends JFrame implements Runnable{
 		gbc_txtrChat.gridy = 0;
 		gbc_txtrChat.gridwidth = 3;
 		gbc_txtrChat.gridheight = 2;
+		gbc_txtrChat.weightx = 1;
+		gbc_txtrChat.weighty = 1;
 		gbc_txtrChat.insets = new Insets(0,5,0,0);
 		contentPane.add(scroll, gbc_txtrChat);
 		
@@ -114,6 +142,8 @@ public class ClientWindow extends JFrame implements Runnable{
 		gbc_txtMessage.gridx = 0;
 		gbc_txtMessage.gridy = 2;
 		gbc_txtMessage.gridwidth = 2;
+		gbc_txtMessage.weightx = 1;
+		gbc_txtMessage.weighty = 0;
 		contentPane.add(txtMessage, gbc_txtMessage);
 		txtMessage.setColumns(10);
 		
@@ -128,6 +158,8 @@ public class ClientWindow extends JFrame implements Runnable{
 		gbc_btnSend.insets = new Insets(0, 0, 0, 5);
 		gbc_btnSend.gridx = 2;
 		gbc_btnSend.gridy = 2;
+		gbc_btnSend.weightx = 0;
+		gbc_txtrChat.weighty = 0;
 		contentPane.add(btnSend, gbc_btnSend);
 		
 		txtMessage.requestFocusInWindow();
@@ -152,11 +184,11 @@ public class ClientWindow extends JFrame implements Runnable{
 		//console(msg);
 		if(text) {
 			msg = client.getName() + ": " + msg;
-			msg = "/m/" + msg;
+			msg = "/m/" + msg + "/e/";
+			txtMessage.setText("");
 		}		
 		client.send(msg.getBytes());
 		txtrChat.setCaretPosition(txtrChat.getDocument().getLength());
-		txtMessage.setText("");
 	}
 	
 	
@@ -177,6 +209,9 @@ public class ClientWindow extends JFrame implements Runnable{
 						console(text);
 					}else if(message.startsWith("/i/")) {
 						send("/i/"+ client.getID() +"/e/",false);
+					}else if(message.startsWith("/u/")) {
+						String[] newUsers = message.split("/u/|/n/|/e/");
+						users.update(Arrays.copyOfRange(newUsers, 1, newUsers.length - 1));
 					}
 					try {
 						Thread.sleep(100L);

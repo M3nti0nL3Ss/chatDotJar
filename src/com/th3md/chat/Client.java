@@ -66,6 +66,16 @@ public class Client{
 		send.start();
 	}
 	
+	public void close() {
+		new Thread("Closing") {
+			public void run() {
+				synchronized (socket) {
+					socket.close();
+				}
+			}
+		}.start();
+	}
+	
 	public boolean openConnect(String ip) {
 		try {
 			socket = new DatagramSocket();

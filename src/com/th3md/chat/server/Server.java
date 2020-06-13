@@ -18,6 +18,7 @@ public class Server implements Runnable{
 	private boolean running = false;
 	private Thread run,client,receive,send;
 	private final int MAX_ATTEMPS = 5;
+	private boolean raw = false;
 	
 	public Server(int port) {
 		this.port = port;
@@ -37,7 +38,53 @@ public class Server implements Runnable{
 		System.out.println("Server Started on port " + port);
 		clients();
 		receive();
-		
+		Scanner scanner = new Scanner(System.in);
+		while(running) {
+			String text = scanner.nextLine();
+			if(!text.startsWith("/") && !text.isEmpty()) {
+				distribute("/m/Server: " + text + "/e/");
+				continue;
+			}
+			text = text.substring(1);
+			if(text.equals("raw")) raw = !raw;
+			if(text.equals("clients")) {
+				System.out.println("Clients:\n===========");
+				for(ServerClient c : clients) {
+					System.out.println(c.name + "(" + c.getID() + ") "+ c.ip + ":"+ c.port);
+				}
+				System.out.println("===========");
+			}
+			if(text.startsWith("kick")) {
+				String name = text.split(" ")[1];
+				int id;
+				try {
+					id = Integer.parseInt(name);
+				}catch(NumberFormatException e) {
+					id = -1;
+				}
+				if(id>=0) {
+					boolean check = false;
+					for(ServerClient c: clients) {
+						if(c.getID() == id) {
+							disconnect(id,true);
+							check = true;
+							break;
+						}
+					}
+					if(!check) System.out.println("Client " + id + " Doesn't exist. Check ID number!");
+				}else {
+					boolean check = false;
+					for(ServerClient c: clients) {
+						if(c.name.equals(name)) {
+							disconnect(c.getID(),true);
+							check = true;
+							break;
+						}
+					}
+					if(!check) System.out.println("Client " + name + " Doesn't exist. Check Name!");
+				}
+			}
+		}
 	}
 	
 	private void clients() {
@@ -45,6 +92,7 @@ public class Server implements Runnable{
 			public void run() {
 				while(running) {
 					distribute("/i/server");
+					sendWhosOnline();
 					try {
 						Thread.sleep(2000L);
 					} catch (InterruptedException e) {
@@ -67,6 +115,16 @@ public class Server implements Runnable{
 			}
 		};
 		client.start();
+	}
+	
+	private void sendWhosOnline() {
+		if(clients.size() <= 0) return;
+		String users = "/u/";
+		for(ServerClient c: clients) {
+			users += c.name + "/n/";
+		}
+		users = users.substring(0,users.length()-2)+"e/";
+		distribute(users);
 	}
 	
 	private void receive() {
@@ -97,10 +155,11 @@ public class Server implements Runnable{
 		if(rPacketString.startsWith("/c/")) {
 			//UUID id = UUID.randomUUID();
 			int id = Random.getRandom();
-			System.out.println("ID :" + id);
+			String name = rPacketString.split("/c/|/e/")[1];
+			System.out.println(name + "(" + id + ") Connected");
 			clients.add(
 					new ServerClient(
-							rPacketString.split("/c/|/e/")[1],
+							name,
 							rPacket.getAddress(),
 							rPacket.getPort(),
 							id
@@ -128,6 +187,7 @@ public class Server implements Runnable{
 				clients.remove(i);
 				break;
 			}
+		if(client == null) return;
 		String message = "Client "+ client.name + "("+ client.getID() + ") @ "
 				+ client.ip.toString()
 				+ ":"
@@ -137,6 +197,11 @@ public class Server implements Runnable{
 	}
 	
 	private void distribute(String message) {
+		if(message.startsWith("/m/")) {
+			String text = message.substring(3).split("/e/")[0];
+			System.out.println(text);
+		}
+		if(raw) System.out.println(message);
 		for(int i=0;i<clients.size();i++) {
 			ServerClient client = clients.get(i);
 			send(message.getBytes(), client.ip,client.port);
