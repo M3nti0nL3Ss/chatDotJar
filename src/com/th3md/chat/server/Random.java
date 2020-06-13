@@ -18,7 +18,7 @@ public class Random {
 	
 	public static int getRandom() {
 		if(index > ids.size() -1 ) index =0;
-		return ids.get(index);
+		return ids.get(index++);
 	}
 	
 }

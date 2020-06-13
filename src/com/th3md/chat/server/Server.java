@@ -7,14 +7,17 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class Server implements Runnable{
 
 	private List<ServerClient> clients = new ArrayList<ServerClient>();
+	private List<Integer> responses = new ArrayList<Integer>();
 	private int port;
 	private DatagramSocket socket;
 	private boolean running = false;
 	private Thread run,client,receive,send;
+	private final int MAX_ATTEMPS = 5;
 	
 	public Server(int port) {
 		this.port = port;
@@ -34,16 +37,31 @@ public class Server implements Runnable{
 		System.out.println("Server Started on port " + port);
 		clients();
 		receive();
+		
 	}
 	
 	private void clients() {
 		client = new Thread("Client") {
 			public void run() {
 				while(running) {
+					distribute("/i/server");
 					try {
-						Thread.sleep(100L);
+						Thread.sleep(2000L);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
+					}
+					for(int i=0;i<clients.size();i++) {
+						ServerClient client = clients.get(i);
+						if(!responses.contains(client.getID())) {
+							if(client.attempt >= MAX_ATTEMPS) {
+								disconnect(client.getID(), false);
+							}else {
+								client.attempt++;
+							}
+						}else {
+							responses.remove(new Integer(client.getID()));
+							client.attempt =0;
+						}
 					}
 				}
 			}
@@ -82,20 +100,40 @@ public class Server implements Runnable{
 			System.out.println("ID :" + id);
 			clients.add(
 					new ServerClient(
-							rPacketString.substring(3,rPacketString.length()),
+							rPacketString.split("/c/|/e/")[1],
 							rPacket.getAddress(),
 							rPacket.getPort(),
 							id
 					)
 			);
-			System.out.println(rPacketString.substring(3,rPacketString.length()));
 			send(("/c/"+id+"/e/").getBytes(), rPacket.getAddress(), rPacket.getPort());
 		}else if(rPacketString.startsWith("/m/")){
 			//System.out.println(rPacketString); // just for debug
 			distribute(rPacketString);
+		}else if(rPacketString.startsWith("/d/")){
+			int id = Integer.parseInt(rPacketString.split("/d/|/e/")[1]);
+			disconnect(id,true);
+		}else if(rPacketString.startsWith("/i/")){
+			responses.add(Integer.parseInt(rPacketString.split("/i/|/e/")[1]));
 		}else{
 			System.out.println(rPacketString);
 		}
+	}
+	
+	private void disconnect(int id, boolean status) {
+		ServerClient client=null;
+		for(int i = 0;i<clients.size();i++) 
+			if(clients.get(i).ID == id) {
+				client = clients.get(i);
+				clients.remove(i);
+				break;
+			}
+		String message = "Client "+ client.name + "("+ client.getID() + ") @ "
+				+ client.ip.toString()
+				+ ":"
+				+ client.port
+				+ ((status)?" Disconnected.":" Time out.");
+		System.out.println(message);
 	}
 	
 	private void distribute(String message) {

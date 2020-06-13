@@ -7,6 +7,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -55,7 +57,7 @@ public class ClientWindow extends JFrame implements Runnable{
 		}
 		createWindow();
 		console("Attempting a connection to " + ip + ":" + port + ", User: " + name);
-		client.send(("/c/" + name).getBytes());
+		client.send(("/c/" + name + "/e/").getBytes());
 		
 		running = true;
 		run = new Thread(this,"ClientWindow");
@@ -102,7 +104,7 @@ public class ClientWindow extends JFrame implements Runnable{
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if(e.getKeyCode() == KeyEvent.VK_ENTER) {
-					send(txtMessage.getText());
+					send(txtMessage.getText(),true);
 				}
 			}
 		});
@@ -119,7 +121,7 @@ public class ClientWindow extends JFrame implements Runnable{
 		JButton btnSend = new JButton("Send");
 		btnSend.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				send(txtMessage.getText());
+				send(txtMessage.getText(),true);
 			}
 		});
 		GridBagConstraints gbc_btnSend = new GridBagConstraints();
@@ -130,6 +132,13 @@ public class ClientWindow extends JFrame implements Runnable{
 		
 		txtMessage.requestFocusInWindow();
 		
+		addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+				send("/d/" + client.getID() + "/e/",false);
+				running = false;
+				client.close();
+			}
+		});
 		
 		try {
 			setVisible(true);
@@ -138,11 +147,13 @@ public class ClientWindow extends JFrame implements Runnable{
 		}
 	}
 	
-	private void send(String msg) {
+	private void send(String msg,boolean text) {
 		if(msg.isEmpty()) return;
-		msg = client.getName() + ": " + msg;
 		//console(msg);
-		msg = "/m/" + msg;
+		if(text) {
+			msg = client.getName() + ": " + msg;
+			msg = "/m/" + msg;
+		}		
 		client.send(msg.getBytes());
 		txtrChat.setCaretPosition(txtrChat.getDocument().getLength());
 		txtMessage.setText("");
@@ -162,8 +173,10 @@ public class ClientWindow extends JFrame implements Runnable{
 						client.setID(Integer.parseInt(message.split("/c/|/e/")[1]));
 						console("Connected, ID : "+client.getID());
 					}else if(message.startsWith("/m/")) {
-						String text = message.split("/m/|/e/")[1];
+						String text = message.substring(3).split("/e/")[0];
 						console(text);
+					}else if(message.startsWith("/i/")) {
+						send("/i/"+ client.getID() +"/e/",false);
 					}
 					try {
 						Thread.sleep(100L);
